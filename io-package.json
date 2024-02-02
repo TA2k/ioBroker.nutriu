@@ -1,0 +1,111 @@
+{
+  "common": {
+    "name": "nutriu",
+    "version": "0.0.1",
+    "news": {
+      "0.0.1": {
+        "en": "initial release",
+        "de": "Erstveröffentlichung",
+        "ru": "Начальная версия",
+        "pt": "lançamento inicial",
+        "nl": "Eerste uitgave",
+        "fr": "Première version",
+        "it": "Versione iniziale",
+        "es": "Versión inicial",
+        "pl": "Pierwsze wydanie",
+        "uk": "Початкова версія",
+        "zh-cn": "首次出版"
+      }
+    },
+    "title": "Nutriu",
+    "titleLang": {
+      "en": "Nutriu",
+      "de": "Nutriu",
+      "ru": "Нутриу",
+      "pt": "Nutriu",
+      "nl": "Nutriu",
+      "fr": "Nutriu",
+      "it": "Nutriu",
+      "es": "Nutriú",
+      "pl": "Nutriu",
+      "uk": "Нутріу",
+      "zh-cn": "营养品"
+    },
+    "desc": {
+      "en": "Adapter for Nutriu App",
+      "de": "Adapter für Nutriu App",
+      "ru": "Адаптер для приложения Nutriu",
+      "pt": "Adaptador para aplicativo Nutriu",
+      "nl": "Adapter voor Nutriu-app",
+      "fr": "Adaptateur pour l'application Nutriu",
+      "it": "Adattatore per l'app Nutriu",
+      "es": "Adaptador para la aplicación Nutriu",
+      "pl": "Adapter do aplikacji Nutriu",
+      "uk": "Адаптер для програми Nutriu",
+      "zh-cn": "Nutriu 应用程序适配器"
+    },
+    "authors": ["TA2k <tombox2020@gmail.com>"],
+    "keywords": ["nutriu", "Philips", "Airfryer"],
+    "license": "MIT",
+    "platform": "Javascript/Node.js",
+    "main": "main.js",
+    "icon": "nutriu.png",
+    "enabled": true,
+    "extIcon": "https://raw.githubusercontent.com/TA2k/ioBroker.nutriu/main/admin/nutriu.png",
+    "readme": "https://github.com/TA2k/ioBroker.nutriu/blob/main/README.md",
+    "loglevel": "info",
+    "tier": 3,
+    "mode": "daemon",
+    "type": "household",
+    "compact": true,
+    "connectionType": "cloud",
+    "dataSource": "poll",
+    "adminUI": {
+      "config": "json"
+    },
+    "dependencies": [
+      {
+        "js-controller": ">=3.3.22"
+      }
+    ],
+    "globalDependencies": [
+      {
+        "admin": ">=5.1.13"
+      }
+    ],
+    "plugins": {
+      "sentry": {
+        "dsn": "https://802f699c7aa84a62b0bcb54b31485352@sentry.iobroker.net/226"
+      }
+    }
+  },
+  "native": {
+    "username": "",
+    "password": "",
+    "interval": 10
+  },
+  "objects": [],
+  "instanceObjects": [
+    {
+      "_id": "info",
+      "type": "channel",
+      "common": {
+        "name": "Information"
+      },
+      "native": {}
+    },
+    {
+      "_id": "info.connection",
+      "type": "state",
+      "common": {
+        "role": "indicator.connected",
+        "name": "Device or service connected",
+        "type": "boolean",
+        "read": true,
+        "write": false,
+        "def": false
+      },
+      "native": {}
+    }
+  ]
+}
