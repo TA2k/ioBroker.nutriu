@@ -47,6 +47,7 @@
     "authors": ["TA2k <tombox2020@gmail.com>"],
     "keywords": ["nutriu", "Philips", "Airfryer"],
     "license": "MIT",
+    "licenseInformation": { "type": "free" },
     "platform": "Javascript/Node.js",
     "main": "main.js",
     "icon": "nutriu.png",

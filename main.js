@@ -35,6 +35,10 @@ class Nutriu extends utils.Adapter {
     });
     this.updateInterval = null;
     this.session = {};
+    this.homeSession = {};
+    this.cdcsession = {};
+    this.gmid =
+      'gmid.ver4.AtLt4vuD2A.2v1uNAnlxTyjUtsN8UWiFgkri68y4UU5ZII52-mAQdqNYNDBbrgYcBhkinLfQMpc.aLgA8GZEYT_KSggB6YlYrpdq4kZU5D33jHhd-SysjaDGed_7c4uEW3HOJLPJo_CS9ApzFtQRz3_YTDIraIJosA.sc3';
   }
 
   /**
@@ -200,7 +204,9 @@ class Nutriu extends utils.Adapter {
           referer: 'https://www.accounts.home.id/',
           'sec-fetch-dest': 'empty',
           cookie:
-            'gmid=gmid.ver4.AtLt4vuD2A.2v1uNAnlxTyjUtsN8UWiFgkri68y4UU5ZII52-mAQdqNYNDBbrgYcBhkinLfQMpc.aLgA8GZEYT_KSggB6YlYrpdq4kZU5D33jHhd-SysjaDGed_7c4uEW3HOJLPJo_CS9ApzFtQRz3_YTDIraIJosA.sc3;gig_bootstrap_4_JGZWlP8eQHpEqkvQElolbA=cdc_ver4;hasGmid=ver4;ucid=XWTJJFteIdHoKhEWg1SEnw',
+            'gmid=' +
+            this.gmid +
+            ';gig_bootstrap_4_JGZWlP8eQHpEqkvQElolbA=cdc_ver4;hasGmid=ver4;ucid=XWTJJFteIdHoKhEWg1SEnw',
         },
         data: {
           email: this.config.username,
@@ -258,7 +264,9 @@ class Nutriu extends utils.Adapter {
           referer: 'https://www.accounts.home.id/',
           'sec-fetch-dest': 'empty',
           cookie:
-            'gmid=gmid.ver4.AtLt4vuD2A.2v1uNAnlxTyjUtsN8UWiFgkri68y4UU5ZII52-mAQdqNYNDBbrgYcBhkinLfQMpc.aLgA8GZEYT_KSggB6YlYrpdq4kZU5D33jHhd-SysjaDGed_7c4uEW3HOJLPJo_CS9ApzFtQRz3_YTDIraIJosA.sc3;gig_bootstrap_4_JGZWlP8eQHpEqkvQElolbA=cdc_ver4;hasGmid=ver4;ucid=XWTJJFteIdHoKhEWg1SEnw',
+            'gmid=' +
+            this.gmid +
+            ';gig_bootstrap_4_JGZWlP8eQHpEqkvQElolbA=cdc_ver4;hasGmid=ver4;ucid=XWTJJFteIdHoKhEWg1SEnw',
         },
         data: {
           vToken: this.vtoken,
@@ -287,7 +295,7 @@ class Nutriu extends utils.Adapter {
             const adapterConfig = 'system.adapter.' + this.name + '.' + this.instance;
 
             const obj = await this.getForeignObjectAsync(adapterConfig);
-            if (obj.native && obj.native.password) {
+            if (obj && obj.native && obj.native.password) {
               this.log.info('Delete incorrect OTP');
               obj.native.password = '';
               this.setForeignObject(adapterConfig, obj);
@@ -295,14 +303,13 @@ class Nutriu extends utils.Adapter {
             return;
           }
           this.log.debug(JSON.stringify(res.data));
-          this.cdcsession = res.data;
         })
         .catch((error) => {
           this.log.error(error);
           error.response && this.log.error(JSON.stringify(error.response.data));
         });
 
-      if (this.cdcsession) {
+      if (this.cdcsession.id_token) {
         await this.requestClient({
           method: 'post',
           maxBodyLength: Infinity,
@@ -350,7 +357,9 @@ class Nutriu extends utils.Adapter {
             cookie:
               'glt_4_JGZWlP8eQHpEqkvQElolbA=' +
               this.cdcsession.sessionInfo.login_token +
-              ';gmid=gmid.ver4.AtLt4vuD2A.2v1uNAnlxTyjUtsN8UWiFgkri68y4UU5ZII52-mAQdqNYNDBbrgYcBhkinLfQMpc.aLgA8GZEYT_KSggB6YlYrpdq4kZU5D33jHhd-SysjaDGed_7c4uEW3HOJLPJo_CS9ApzFtQRz3_YTDIraIJosA.sc3; gig_bootstrap_4_JGZWlP8eQHpEqkvQElolbA=cdc_ver4;hasGmid=ver4;ucid=XWTJJFteIdHoKhEWg1SEnw',
+              ';gmid=' +
+              this.gmid +
+              '; gig_bootstrap_4_JGZWlP8eQHpEqkvQElolbA=cdc_ver4;hasGmid=ver4;ucid=XWTJJFteIdHoKhEWg1SEnw',
           },
           data: {
             oidc_context: this.context,
@@ -391,7 +400,9 @@ class Nutriu extends utils.Adapter {
             cookie:
               'glt_4_JGZWlP8eQHpEqkvQElolbA=' +
               this.cdcsession.sessionInfo.login_token +
-              ';gmid=gmid.ver4.AtLt4vuD2A.2v1uNAnlxTyjUtsN8UWiFgkri68y4UU5ZII52-mAQdqNYNDBbrgYcBhkinLfQMpc.aLgA8GZEYT_KSggB6YlYrpdq4kZU5D33jHhd-SysjaDGed_7c4uEW3HOJLPJo_CS9ApzFtQRz3_YTDIraIJosA.sc3; gig_bootstrap_4_JGZWlP8eQHpEqkvQElolbA=cdc_ver4;hasGmid=ver4;ucid=XWTJJFteIdHoKhEWg1SEnw',
+              ';gmid=' +
+              this.gmid +
+              '; gig_bootstrap_4_JGZWlP8eQHpEqkvQElolbA=cdc_ver4;hasGmid=ver4;ucid=XWTJJFteIdHoKhEWg1SEnw',
 
             'sec-fetch-dest': 'document',
             'accept-language': 'de-DE,de;q=0.9',
@@ -436,7 +447,9 @@ class Nutriu extends utils.Adapter {
             cookie:
               'glt_4_JGZWlP8eQHpEqkvQElolbA=' +
               this.cdcsession.sessionInfo.login_token +
-              '; gmid=gmid.ver4.AtLt4vuD2A.2v1uNAnlxTyjUtsN8UWiFgkri68y4UU5ZII52-mAQdqNYNDBbrgYcBhkinLfQMpc.aLgA8GZEYT_KSggB6YlYrpdq4kZU5D33jHhd-SysjaDGed_7c4uEW3HOJLPJo_CS9ApzFtQRz3_YTDIraIJosA.sc3; gig_bootstrap_4_JGZWlP8eQHpEqkvQElolbA=cdc_ver4; hasGmid=ver4; ucid=XWTJJFteIdHoKhEWg1SEnw',
+              '; gmid=' +
+              this.gmid +
+              '; gig_bootstrap_4_JGZWlP8eQHpEqkvQElolbA=cdc_ver4; hasGmid=ver4; ucid=XWTJJFteIdHoKhEWg1SEnw',
 
             'sec-fetch-dest': 'document',
             'accept-language': 'de-DE,de;q=0.9',
@@ -479,14 +492,80 @@ class Nutriu extends utils.Adapter {
         })
           .then(async (res) => {
             this.log.debug(JSON.stringify(res.data));
-            this.session = res.data;
-            this.log.info('Login successful');
-            await this.setStateAsync('info.connection', true, true);
+            this.homesession = res.data;
+            this.log.info('Login #1 successful');
+            this.extendObjectAsync('auth.homesession', {
+              type: 'state',
+              common: {
+                name: 'homesession',
+                type: 'string',
+                role: 'state',
+                read: true,
+                write: true,
+              },
+              native: {},
+            });
+            await this.setStateAsync('auth.homesession', { val: JSON.stringify(res.data), ack: true });
+            await this.extendObjectAsync('auth.uid', {
+              type: 'state',
+              common: {
+                name: 'uid',
+                type: 'string',
+                role: 'state',
+                read: true,
+                write: true,
+              },
+              native: {},
+            });
+            await this.setStateAsync('auth.uid', { val: this.cdcsession.UID, ack: true });
           })
           .catch((error) => {
             this.log.error(error);
             error.response && this.log.error(JSON.stringify(error.response.data));
           });
+        if (this.homeSession.access_token) {
+          await this.requestClient({
+            method: 'post',
+            maxBodyLength: Infinity,
+            url: 'https://www.backend.vbs.versuni.com/api/v2/auth/Consumer$login?requestLocation=onboarding',
+            headers: {
+              accept: '*/*',
+              'content-type': 'application/json',
+              'api-version': '2.0.0',
+              'x-user-agent': 'iOS 16.7.2;7.28.1',
+              'user-agent':
+                'NutriU/7.28.1 (com.philips.cl.nutriu; build:1; iOS 16.7.2) Darwin/22.6.0 CFNetwork/1410.0.3',
+              'accept-language': 'de-DE',
+            },
+            data: {
+              data: {
+                type: 'consumerLoginRequest',
+                attributes: {
+                  identityProvider: 'DI',
+                  name: this.config.username.split('@')[0],
+                  guestProfileId: 'd1ba2056-c03e-49f1-95e2-c3e30f77214e',
+                  countryCode: 'DE',
+                  token: this.homeSession.access_token,
+                  email: this.config.username,
+                  userUUID: this.cdcsession.UID,
+                  spaceId: '76ad924e-982c-436e-a3b1-57dc71f73ca2',
+                },
+              },
+            },
+          })
+            .then(async (res) => {
+              this.log.debug(JSON.stringify(res.data));
+              if (res.data && res.data.data && res.data.data.attributes) {
+                this.session = res.data.data.attributes;
+                this.log.info('Login successful');
+                await this.setStateAsync('info.connection', true, true);
+              }
+            })
+            .catch((error) => {
+              this.log.error(error);
+              error.response && this.log.error(JSON.stringify(error.response.data));
+            });
+        }
       }
     }
   }
