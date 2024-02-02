@@ -67,16 +67,35 @@ class Nutriu extends utils.Adapter {
     if (contextState && contextState.val) {
       this.context = contextState.val;
     }
+    const uidState = await this.getStateAsync('auth.uid');
+    if (uidState && uidState.val) {
+      this.uid = uidState.val;
+    }
+    const homesessionState = await this.getStateAsync('auth.homesession');
+    if (homesessionState && homesessionState.val) {
+      this.homeSession = JSON.parse(homesessionState.val);
+    }
+
     this.subscribeStates('*');
-    await this.login();
-    if (!this.session.access_token) {
+    if (this.homeSession.access_token) {
+      await this.refreshToken();
+      await this.getConsumerLogin();
+    } else {
+      await this.login();
+    }
+    if (!this.session.token) {
       this.log.error('No session found');
       return;
     }
     await this.getDeviceList();
+    await this.updateDevices();
     this.updateInterval = setInterval(() => {
       this.updateDevices();
     }, this.config.interval * 1000);
+    this.refreshInterval = setInterval(async () => {
+      await this.refreshToken();
+      await this.getConsumerLogin();
+    }, 59 * 60 * 1000);
   }
   async login() {
     if (!this.config.password) {
@@ -203,10 +222,7 @@ class Nutriu extends utils.Adapter {
             'Mozilla/5.0 (iPhone; CPU iPhone OS 16_7_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1',
           referer: 'https://www.accounts.home.id/',
           'sec-fetch-dest': 'empty',
-          cookie:
-            'gmid=' +
-            this.gmid +
-            ';gig_bootstrap_4_JGZWlP8eQHpEqkvQElolbA=cdc_ver4;hasGmid=ver4;ucid=XWTJJFteIdHoKhEWg1SEnw',
+          cookie: 'gmid=' + this.gmid + ';gig_bootstrap_4_JGZWlP8eQHpEqkvQElolbA=cdc_ver4;hasGmid=ver4;ucid=XWTJJFteIdHoKhEWg1SEnw',
         },
         data: {
           email: this.config.username,
@@ -214,8 +230,7 @@ class Nutriu extends utils.Adapter {
           APIKey: '4_JGZWlP8eQHpEqkvQElolbA',
           sdk: 'js_latest',
           authMode: 'cookie',
-          pageURL:
-            'https://www.accounts.home.id/authui/client/login?gig_ui_locales=de-DE&gig_client_id=-u6aTznrxp9_9e_0a57CpvEG&country=de',
+          pageURL: 'https://www.accounts.home.id/authui/client/login?gig_ui_locales=de-DE&gig_client_id=-u6aTznrxp9_9e_0a57CpvEG&country=de',
           sdkBuild: '15703',
           format: 'json',
         },
@@ -263,10 +278,7 @@ class Nutriu extends utils.Adapter {
             'Mozilla/5.0 (iPhone; CPU iPhone OS 16_7_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1',
           referer: 'https://www.accounts.home.id/',
           'sec-fetch-dest': 'empty',
-          cookie:
-            'gmid=' +
-            this.gmid +
-            ';gig_bootstrap_4_JGZWlP8eQHpEqkvQElolbA=cdc_ver4;hasGmid=ver4;ucid=XWTJJFteIdHoKhEWg1SEnw',
+          cookie: 'gmid=' + this.gmid + ';gig_bootstrap_4_JGZWlP8eQHpEqkvQElolbA=cdc_ver4;hasGmid=ver4;ucid=XWTJJFteIdHoKhEWg1SEnw',
         },
         data: {
           vToken: this.vtoken,
@@ -278,8 +290,7 @@ class Nutriu extends utils.Adapter {
           APIKey: '4_JGZWlP8eQHpEqkvQElolbA',
           sdk: 'js_latest',
           authMode: 'cookie',
-          pageURL:
-            'https://www.accounts.home.id/authui/client/login?gig_ui_locales=de-DE&gig_client_id=-u6aTznrxp9_9e_0a57CpvEG&country=de',
+          pageURL: 'https://www.accounts.home.id/authui/client/login?gig_ui_locales=de-DE&gig_client_id=-u6aTznrxp9_9e_0a57CpvEG&country=de',
           sdkBuild: '15703',
           format: 'json',
         },
@@ -303,6 +314,7 @@ class Nutriu extends utils.Adapter {
             return;
           }
           this.log.debug(JSON.stringify(res.data));
+          this.cdcsession = res.data;
         })
         .catch((error) => {
           this.log.error(error);
@@ -324,8 +336,7 @@ class Nutriu extends utils.Adapter {
             origin: 'https://www.accounts.home.id',
             'user-agent':
               'Mozilla/5.0 (iPhone; CPU iPhone OS 16_7_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1',
-            referer:
-              'https://www.accounts.home.id/authui/client/login?client_id=-u6aTznrxp9_9e_0a57CpvEG&ui_locales=de-DE',
+            referer: 'https://www.accounts.home.id/authui/client/login?client_id=-u6aTznrxp9_9e_0a57CpvEG&ui_locales=de-DE',
             'x-newrelic-id': 'undefined',
             cookie: 'glt_4_JGZWlP8eQHpEqkvQElolbA=' + this.cdcsession.sessionInfo.login_token,
           },
@@ -367,8 +378,7 @@ class Nutriu extends utils.Adapter {
             sdk: 'js_latest',
             login_token: this.cdcsession.sessionInfo.login_token,
             authMode: 'cookie',
-            pageURL:
-              'https://www.accounts.home.id/authui/client/login?gig_ui_locales=de-DE&gig_client_id=-u6aTznrxp9_9e_0a57CpvEG&country=de',
+            pageURL: 'https://www.accounts.home.id/authui/client/login?gig_ui_locales=de-DE&gig_client_id=-u6aTznrxp9_9e_0a57CpvEG&country=de',
             sdkBuild: '15703',
             format: 'json',
           },
@@ -492,9 +502,9 @@ class Nutriu extends utils.Adapter {
         })
           .then(async (res) => {
             this.log.debug(JSON.stringify(res.data));
-            this.homesession = res.data;
+            this.homeSession = res.data;
             this.log.info('Login #1 successful');
-            this.extendObjectAsync('auth.homesession', {
+            await this.extendObjectAsync('auth.homesession', {
               type: 'state',
               common: {
                 name: 'homesession',
@@ -518,69 +528,109 @@ class Nutriu extends utils.Adapter {
               native: {},
             });
             await this.setStateAsync('auth.uid', { val: this.cdcsession.UID, ack: true });
+            this.uid = this.cdcsession.UID;
           })
           .catch((error) => {
             this.log.error(error);
             error.response && this.log.error(JSON.stringify(error.response.data));
           });
         if (this.homeSession.access_token) {
-          await this.requestClient({
-            method: 'post',
-            maxBodyLength: Infinity,
-            url: 'https://www.backend.vbs.versuni.com/api/v2/auth/Consumer$login?requestLocation=onboarding',
-            headers: {
-              accept: '*/*',
-              'content-type': 'application/json',
-              'api-version': '2.0.0',
-              'x-user-agent': 'iOS 16.7.2;7.28.1',
-              'user-agent':
-                'NutriU/7.28.1 (com.philips.cl.nutriu; build:1; iOS 16.7.2) Darwin/22.6.0 CFNetwork/1410.0.3',
-              'accept-language': 'de-DE',
-            },
-            data: {
-              data: {
-                type: 'consumerLoginRequest',
-                attributes: {
-                  identityProvider: 'DI',
-                  name: this.config.username.split('@')[0],
-                  guestProfileId: 'd1ba2056-c03e-49f1-95e2-c3e30f77214e',
-                  countryCode: 'DE',
-                  token: this.homeSession.access_token,
-                  email: this.config.username,
-                  userUUID: this.cdcsession.UID,
-                  spaceId: '76ad924e-982c-436e-a3b1-57dc71f73ca2',
-                },
-              },
-            },
-          })
-            .then(async (res) => {
-              this.log.debug(JSON.stringify(res.data));
-              if (res.data && res.data.data && res.data.data.attributes) {
-                this.session = res.data.data.attributes;
-                this.log.info('Login successful');
-                await this.setStateAsync('info.connection', true, true);
-              }
-            })
-            .catch((error) => {
-              this.log.error(error);
-              error.response && this.log.error(JSON.stringify(error.response.data));
-            });
+          await this.getConsumerLogin();
         }
       }
     }
   }
 
+  async getConsumerLogin() {
+    await this.requestClient({
+      method: 'post',
+      maxBodyLength: Infinity,
+      url: 'https://www.backend.vbs.versuni.com/api/v2/auth/Consumer$login?requestLocation=onboarding',
+      headers: {
+        accept: '*/*',
+        'content-type': 'application/json',
+        'api-version': '2.0.0',
+        'x-user-agent': 'iOS 16.7.2;7.28.1',
+        'user-agent': 'NutriU/7.28.1 (com.philips.cl.nutriu; build:1; iOS 16.7.2) Darwin/22.6.0 CFNetwork/1410.0.3',
+        'accept-language': 'de-DE',
+      },
+      data: {
+        data: {
+          type: 'consumerLoginRequest',
+          attributes: {
+            identityProvider: 'DI',
+            name: this.config.username.split('@')[0],
+            // guestProfileId: 'd1ba2056-c03e-49f1-95e2-c3e30f77214e',
+            countryCode: 'DE',
+            token: this.homeSession.access_token,
+            email: this.config.username,
+            userUUID: this.uid,
+            spaceId: '76ad924e-982c-436e-a3b1-57dc71f73ca2',
+          },
+        },
+      },
+    })
+      .then(async (res) => {
+        this.log.debug(JSON.stringify(res.data));
+        if (res.data && res.data.data && res.data.data.attributes) {
+          this.session = res.data.data.attributes;
+          this.log.info('Login successful');
+          await this.setStateAsync('info.connection', true, true);
+        }
+      })
+      .catch((error) => {
+        this.log.error(error);
+        error.response && this.log.error(JSON.stringify(error.response.data));
+      });
+  }
+  async refreshToken() {
+    await this.requestClient({
+      method: 'post',
+      maxBodyLength: Infinity,
+      url: 'https://cdc.accounts.home.id/oidc/op/v1.0/4_JGZWlP8eQHpEqkvQElolbA/token',
+      headers: {
+        accept: '*/*',
+        'content-type': 'application/x-www-form-urlencoded; charset=UTF-8',
+        'user-agent': 'NutriU/1 CFNetwork/1410.0.3 Darwin/22.6.0',
+        'accept-language': 'de-DE,de;q=0.9',
+      },
+      data: {
+        client_id: '-u6aTznrxp9_9e_0a57CpvEG',
+        grant_type: 'refresh_token',
+        refresh_token: this.homeSession.refresh_token,
+      },
+    })
+      .then(async (res) => {
+        this.log.debug(JSON.stringify(res.data));
+        this.homeSession = res.data;
+        await this.setStateAsync('auth.homesession', { val: JSON.stringify(res.data), ack: true });
+      })
+      .catch(async (error) => {
+        this.log.debug("Refresh token didn't work");
+        this.log.error(error);
+        error.response && this.log.error(JSON.stringify(error.response.data));
+        this.log.info('Delete all session infos');
+        await this.setStateAsync('auth.vtoken', { val: '', ack: true });
+        await this.setStateAsync('auth.context', { val: '', ack: true });
+        await this.setStateAsync('auth.uid', { val: '', ack: true });
+        await this.setStateAsync('auth.homesession', { val: '', ack: true });
+        const obj = await this.getForeignObjectAsync('system.adapter.' + this.name + '.' + this.instance);
+        if (obj && obj.native && obj.native.password) {
+          this.log.info('Delete  OTP');
+          obj.native.password = '';
+          this.setForeignObject('system.adapter.' + this.name + '.' + this.instance, obj);
+        }
+      });
+  }
   async getDeviceList() {
     this.log.info(`Getting devices`);
     await this.requestClient({
       method: 'get',
       maxBodyLength: Infinity,
-      url:
-        'https://www.backend.vbs.versuni.com/api/0921897c-a457-443b-b555-5bbc7cd62985/Profile/self/Appliance?page=1&size=10&ts=' +
-        Date.now(),
+      url: 'https://www.backend.vbs.versuni.com/api/0921897c-a457-443b-b555-5bbc7cd62985/Profile/self/Appliance?page=1&size=10&ts=' + Date.now(),
       headers: {
         accept: 'application/vnd.oneka.v2.0+json',
-        authorization: 'Bearer ' + this.session.access_token,
+        authorization: 'Bearer ' + this.session.token,
         'x-user-agent': 'iOS 16.7.3;7.28.1',
         'user-agent': 'NutriU/7.28.1 (com.philips.cl.nutriu; build:1; iOS 16.7.3) Darwin/22.6.0 CFNetwork/1410.0.3',
         'accept-language': 'de-DE',
@@ -589,6 +639,30 @@ class Nutriu extends utils.Adapter {
       .then(async (res) => {
         this.setState('info.connection', true, true);
         this.log.debug(JSON.stringify(res.data));
+        if (res.data._embedded && res.data._embedded.item) {
+          this.log.info('Found ' + res.data._embedded.item.length + ' devices');
+          for (const device of res.data._embedded.item) {
+            this.deviceArray.push(device);
+            this.log.debug('Device: ' + JSON.stringify(device));
+            const id = device.externalDeviceId;
+            await this.extendObjectAsync(id, {
+              type: 'device',
+              common: {
+                name: device.name,
+                role: 'device',
+              },
+              native: device,
+            });
+            await this.extendObjectAsync(id + '.general', {
+              type: 'channel',
+              common: {
+                name: 'General',
+              },
+              native: {},
+            });
+            this.json2iob.parse(id + '.general', device);
+          }
+        }
       })
       .catch((error) => {
         this.log.error(error);
@@ -596,30 +670,30 @@ class Nutriu extends utils.Adapter {
       });
   }
 
-  async sleep(ms) {
-    return new Promise((resolve) => setTimeout(resolve, ms));
-  }
-
   async updateDevices() {
-    await this.requestClient({
-      method: 'get',
-      url: 'http://',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    })
-      .then(async (res) => {
-        this.log.debug(JSON.stringify(res.data));
-      })
-      .catch((error) => {
-        //check for socket hangup
-        if (error.code === 'ECONNRESET') {
-          this.log.info('Bridge is busy. Cannot handle more requests');
-          return;
-        }
-        this.log.warn(error);
-        error.response && this.log.warn(JSON.stringify(error.response.data));
-      });
+    for (const device of this.deviceArray) {
+      if (device._links.device) {
+        await this.requestClient({
+          method: 'get',
+          url: device._links.device.href,
+          headers: {
+            accept: 'application/vnd.oneka.v2.0+json',
+            authorization: 'Bearer ' + this.session.token,
+            'x-user-agent': 'iOS 16.7.3;7.28.1',
+            'user-agent': 'NutriU/7.28.1 (com.philips.cl.nutriu; build:1; iOS 16.7.3) Darwin/22.6.0 CFNetwork/1410.0.3',
+            'accept-language': 'de-DE',
+          },
+        })
+          .then(async (res) => {
+            this.log.debug(JSON.stringify(res.data));
+            this.json2iob.parse(device.externalDeviceId + '.status', res.data, { channelName: 'status of device' });
+          })
+          .catch((error) => {
+            this.log.warn(error);
+            error.response && this.log.warn(JSON.stringify(error.response.data));
+          });
+      }
+    }
   }
 
   /**
