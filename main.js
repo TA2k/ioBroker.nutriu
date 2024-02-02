@@ -65,6 +65,10 @@ class Nutriu extends utils.Adapter {
     }
     this.subscribeStates('*');
     await this.login();
+    if (!this.session.access_token) {
+      this.log.error('No session found');
+      return;
+    }
     await this.getDeviceList();
     this.updateInterval = setInterval(() => {
       this.updateDevices();
@@ -76,12 +80,25 @@ class Nutriu extends utils.Adapter {
       await this.requestClient({
         method: 'get',
         maxBodyLength: Infinity,
-        url: 'https://cdc.accounts.home.id/oidc/op/v1.0/4_JGZWlP8eQHpEqkvQElolbA/authorize?prompt=login&nonce=jr3o3-vRNsFoLfb7LQlxHvConfik64BI_xaXZ6Bt0CQ&response_type=code&code_challenge_method=S256&scope=openid%20profile%20email%20DI.Account.read%20DI.AccountProfile.read%20DI.AccountProfile.write%20DI.AccountGeneralConsent.read%20DI.AccountGeneralConsent.write%20DI.AccountSubscription.read%20DI.AccountSubscription.write%20DI.GeneralConsent.read%20DI.GeneralConsent.write%20VoiceProvider.read%20VoiceProvider.write%20offline_access%20subscriptions%20consents%20profile_extended&ui_locales=de-DE&code_challenge=e-X7435aOyHur7_mrjIiPNBk0vhOxQfrM-KmVE0jmqM&redirect_uri=com.philips.ka.oneka.app.prod://oauthredirect&client_id=-u6aTznrxp9_9e_0a57CpvEG&state=pDZ_UJai8noI9dhhWqspO7Uh8MIrhgdXGuYve5jiuiU',
+        url: 'https://cdc.accounts.home.id/oidc/op/v1.0/4_JGZWlP8eQHpEqkvQElolbA/authorize',
+        params: {
+          client_id: '-u6aTznrxp9_9e_0a57CpvEG',
+          code_challenge: 'e-X7435aOyHur7_mrjIiPNBk0vhOxQfrM-KmVE0jmqM',
+          code_challenge_method: 'S256',
+          nonce: 'jr3o3-vRNsFoLfb7LQlxHvConfik64BI_xaXZ6Bt0CQ',
+          prompt: 'login',
+          redirect_uri: 'com.philips.ka.oneka.app.prod://oauthredirect',
+          response_type: 'code',
+          scope:
+            'openid profile email DI.Account.read DI.AccountProfile.read DI.AccountProfile.write DI.AccountGeneralConsent.read DI.AccountGeneralConsent.write DI.AccountSubscription.read DI.AccountSubscription.write DI.GeneralConsent.read DI.GeneralConsent.write VoiceProvider.read VoiceProvider.write offline_access subscriptions consents profile_extended',
+          state: 'pDZ_UJai8noI9dhhWqspO7Uh8MIrhgdXGuYve5jiuiU',
+          ui_locales: 'de-DE',
+        },
         headers: {
           accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
           'sec-fetch-site': 'none',
           cookie:
-            'glt_4_JGZWlP8eQHpEqkvQElolbA=st2.s.AtLtt1pMdQ.bYAWpG7qSz_CxprONr8xnTzjbsJ9mEmKSTHf2jaia1SlT33vklrzubU8BtJkCGLm1bhIH55vFrbBqteG4cKYmjd6IY3tBYxDRca-ksd5lLdvb5whC-vDfhNhQjziRM5-.eNjk0I7m-k6aUjceUTGuw8Qt3TsDe2eQRWacT8XONfSbFMyl8SKvPHiPGSI1cmBSETqzZ0QytsfNXVw9ar7F_Q.sc3',
+            'glt_4_JGZWlP8eQHpEqkvQElolbA=st2.s.AtLtJAAJug.Upo-Xag8trt29nkkC2QlEyfWDNo6dH4jgrCcW-kOz4UN59EvaIeliz267LdlkoNrE9yJnXPSZ7XR09HzK4umNFxsiVUkU3SWnwIZUqbw2wteuFlVC7LZ3m7lz2ZCdj1c.xHw6E6lDOTJRHNhFg3fWdkpcqQ_GXWGV8JPEhFEL_Qb_Q3YeHiAxstY-ic3Br4p8p7HQwcyvjB2HjGhcXGuW7g.sc3',
           'sec-fetch-mode': 'navigate',
           'user-agent':
             'Mozilla/5.0 (iPhone; CPU iPhone OS 16_7_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1',
@@ -106,6 +123,7 @@ class Nutriu extends utils.Adapter {
             },
             native: {},
           });
+          this.context = context;
           await this.setStateAsync('auth.context', { val: context, ack: true });
         })
         .catch((error) => {
@@ -113,7 +131,59 @@ class Nutriu extends utils.Adapter {
           this.log.error(error);
           error.response && this.log.error(JSON.stringify(error.response.data));
         });
-
+      await this.requestClient({
+        method: 'get',
+        maxBodyLength: Infinity,
+        url: 'https://www.accounts.home.id/authui/client/proxy',
+        params: {
+          client_id: '-u6aTznrxp9_9e_0a57CpvEG',
+          context: this.context,
+          gig_ui_locales: 'de-DE',
+          mode: 'forceLogin',
+          prompt: 'login',
+          scope:
+            'openid profile email DI.Account.read DI.AccountProfile.read DI.AccountProfile.write DI.AccountGeneralConsent.read DI.AccountGeneralConsent.write DI.AccountSubscription.read DI.AccountSubscription.write DI.GeneralConsent.read subscriptions consents profile_extended',
+        },
+        headers: {
+          accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+          'sec-fetch-site': 'none',
+          cookie:
+            'glt_4_JGZWlP8eQHpEqkvQElolbA=st2.s.AtLtJAAJug.Upo-Xag8trt29nkkC2QlEyfWDNo6dH4jgrCcW-kOz4UN59EvaIeliz267LdlkoNrE9yJnXPSZ7XR09HzK4umNFxsiVUkU3SWnwIZUqbw2wteuFlVC7LZ3m7lz2ZCdj1c.xHw6E6lDOTJRHNhFg3fWdkpcqQ_GXWGV8JPEhFEL_Qb_Q3YeHiAxstY-ic3Br4p8p7HQwcyvjB2HjGhcXGuW7g.sc3',
+          'sec-fetch-mode': 'navigate',
+          'user-agent':
+            'Mozilla/5.0 (iPhone; CPU iPhone OS 16_7_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1',
+          'accept-language': 'de-DE,de;q=0.9',
+          'sec-fetch-dest': 'document',
+        },
+      }).catch((error) => {
+        this.log.error('Error getting login 1 page');
+        this.log.error(error);
+        error.response && this.log.error(JSON.stringify(error.response.data));
+      });
+      await this.requestClient({
+        method: 'get',
+        maxBodyLength: Infinity,
+        url: 'https://www.accounts.home.id/authui/client/login?gig_ui_locales=de-DE&gig_client_id=-u6aTznrxp9_9e_0a57CpvEG&country=de',
+        headers: {
+          accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+          'sec-fetch-site': 'same-origin',
+          cookie:
+            'glt_4_JGZWlP8eQHpEqkvQElolbA=st2.s.AtLtJAAJug.Upo-Xag8trt29nkkC2QlEyfWDNo6dH4jgrCcW-kOz4UN59EvaIeliz267LdlkoNrE9yJnXPSZ7XR09HzK4umNFxsiVUkU3SWnwIZUqbw2wteuFlVC7LZ3m7lz2ZCdj1c.xHw6E6lDOTJRHNhFg3fWdkpcqQ_GXWGV8JPEhFEL_Qb_Q3YeHiAxstY-ic3Br4p8p7HQwcyvjB2HjGhcXGuW7g.sc3',
+          referer:
+            'https://www.accounts.home.id/authui/client/proxy?context=' +
+            this.context +
+            '&client_id=-u6aTznrxp9_9e_0a57CpvEG&mode=forceLogin&scope=openid+profile+email+DI.Account.read+DI.AccountProfile.read+DI.AccountProfile.write+DI.AccountGeneralConsent.read+DI.AccountGeneralConsent.write+DI.AccountSubscription.read+DI.AccountSubscription.write+DI.GeneralConsent.read+subscriptions+consents+profile_extended&prompt=login&gig_ui_locales=de-DE',
+          'sec-fetch-dest': 'document',
+          'sec-fetch-mode': 'navigate',
+          'user-agent':
+            'Mozilla/5.0 (iPhone; CPU iPhone OS 16_7_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1',
+          'accept-language': 'de-DE,de;q=0.9',
+        },
+      }).catch((error) => {
+        this.log.error('Error getting login 2 page');
+        this.log.error(error);
+        error.response && this.log.error(JSON.stringify(error.response.data));
+      });
       await this.requestClient({
         method: 'post',
         maxBodyLength: Infinity,
@@ -129,7 +199,8 @@ class Nutriu extends utils.Adapter {
             'Mozilla/5.0 (iPhone; CPU iPhone OS 16_7_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1',
           referer: 'https://www.accounts.home.id/',
           'sec-fetch-dest': 'empty',
-          cookie: 'gig_bootstrap_4_JGZWlP8eQHpEqkvQElolbA=cdc_ver4',
+          cookie:
+            'gmid=gmid.ver4.AtLt4vuD2A.2v1uNAnlxTyjUtsN8UWiFgkri68y4UU5ZII52-mAQdqNYNDBbrgYcBhkinLfQMpc.aLgA8GZEYT_KSggB6YlYrpdq4kZU5D33jHhd-SysjaDGed_7c4uEW3HOJLPJo_CS9ApzFtQRz3_YTDIraIJosA.sc3;gig_bootstrap_4_JGZWlP8eQHpEqkvQElolbA=cdc_ver4;hasGmid=ver4;ucid=XWTJJFteIdHoKhEWg1SEnw',
         },
         data: {
           email: this.config.username,
@@ -144,7 +215,7 @@ class Nutriu extends utils.Adapter {
         },
       })
         .then(async (res) => {
-          if (res.vToken) {
+          if (res.data && res.data.vToken) {
             this.log.info('Please enter the OTP code in the instance settings');
             await this.extendObjectAsync('auth.vtoken', {
               type: 'state',
@@ -157,7 +228,7 @@ class Nutriu extends utils.Adapter {
               },
               native: {},
             });
-            await this.setStateAsync('auth.vtoken', { val: res.vToken, ack: true });
+            await this.setStateAsync('auth.vtoken', { val: res.data.vToken, ack: true });
           } else {
             this.log.error('No vToken for OTP received');
             await this.setStateAsync('info.connection', false, true);
@@ -186,7 +257,8 @@ class Nutriu extends utils.Adapter {
             'Mozilla/5.0 (iPhone; CPU iPhone OS 16_7_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1',
           referer: 'https://www.accounts.home.id/',
           'sec-fetch-dest': 'empty',
-          cookie: 'gig_bootstrap_4_JGZWlP8eQHpEqkvQElolbA=cdc_ver4',
+          cookie:
+            'gmid=gmid.ver4.AtLt4vuD2A.2v1uNAnlxTyjUtsN8UWiFgkri68y4UU5ZII52-mAQdqNYNDBbrgYcBhkinLfQMpc.aLgA8GZEYT_KSggB6YlYrpdq4kZU5D33jHhd-SysjaDGed_7c4uEW3HOJLPJo_CS9ApzFtQRz3_YTDIraIJosA.sc3;gig_bootstrap_4_JGZWlP8eQHpEqkvQElolbA=cdc_ver4;hasGmid=ver4;ucid=XWTJJFteIdHoKhEWg1SEnw',
         },
         data: {
           vToken: this.vtoken,
@@ -208,7 +280,18 @@ class Nutriu extends utils.Adapter {
           if (res.data && res.data.errorMessage) {
             this.log.error('Login failed');
             this.log.error(res.data.errorMessage);
+
             await this.setStateAsync('info.connection', false, true);
+            await this.setStateAsync('auth.vtoken', { val: '', ack: true });
+            //get adapter config object
+            const adapterConfig = 'system.adapter.' + this.name + '.' + this.instance;
+
+            const obj = await this.getForeignObjectAsync(adapterConfig);
+            if (obj.native && obj.native.password) {
+              this.log.info('Delete incorrect OTP');
+              obj.native.password = '';
+              this.setForeignObject(adapterConfig, obj);
+            }
             return;
           }
           this.log.debug(JSON.stringify(res.data));
@@ -237,22 +320,57 @@ class Nutriu extends utils.Adapter {
             referer:
               'https://www.accounts.home.id/authui/client/login?client_id=-u6aTznrxp9_9e_0a57CpvEG&ui_locales=de-DE',
             'x-newrelic-id': 'undefined',
-            cookie: 'glt_4_JGZWlP8eQHpEqkvQElolbA=' + this.cdcsession.login_token,
+            cookie: 'glt_4_JGZWlP8eQHpEqkvQElolbA=' + this.cdcsession.sessionInfo.login_token,
           },
           data: { token: this.cdcsession.id_token },
         })
           .then(async (res) => {
             this.log.debug(JSON.stringify(res.data));
-            this.session = res.data;
-            this.log.info('Login successful');
-            await this.setStateAsync('info.connection', true, true);
           })
           .catch((error) => {
             this.log.error("Couldn't get session");
             this.log.error(error);
             error.response && this.log.error(JSON.stringify(error.response.data));
           });
-
+        await this.requestClient({
+          method: 'post',
+          maxBodyLength: Infinity,
+          url: 'https://cdc.accounts.home.id/oidc/op/v1.0/4_JGZWlP8eQHpEqkvQElolbA/contextData',
+          headers: {
+            'content-type': 'application/x-www-form-urlencoded',
+            accept: '*/*',
+            'sec-fetch-site': 'same-site',
+            'accept-language': 'de-DE,de;q=0.9',
+            'sec-fetch-mode': 'cors',
+            origin: 'https://www.accounts.home.id',
+            'user-agent':
+              'Mozilla/5.0 (iPhone; CPU iPhone OS 16_7_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1',
+            referer: 'https://www.accounts.home.id/',
+            'sec-fetch-dest': 'empty',
+            cookie:
+              'glt_4_JGZWlP8eQHpEqkvQElolbA=' +
+              this.cdcsession.sessionInfo.login_token +
+              ';gmid=gmid.ver4.AtLt4vuD2A.2v1uNAnlxTyjUtsN8UWiFgkri68y4UU5ZII52-mAQdqNYNDBbrgYcBhkinLfQMpc.aLgA8GZEYT_KSggB6YlYrpdq4kZU5D33jHhd-SysjaDGed_7c4uEW3HOJLPJo_CS9ApzFtQRz3_YTDIraIJosA.sc3; gig_bootstrap_4_JGZWlP8eQHpEqkvQElolbA=cdc_ver4;hasGmid=ver4;ucid=XWTJJFteIdHoKhEWg1SEnw',
+          },
+          data: {
+            oidc_context: this.context,
+            APIKey: '4_JGZWlP8eQHpEqkvQElolbA',
+            sdk: 'js_latest',
+            login_token: this.cdcsession.sessionInfo.login_token,
+            authMode: 'cookie',
+            pageURL:
+              'https://www.accounts.home.id/authui/client/login?gig_ui_locales=de-DE&gig_client_id=-u6aTznrxp9_9e_0a57CpvEG&country=de',
+            sdkBuild: '15703',
+            format: 'json',
+          },
+        })
+          .then(async (res) => {
+            this.log.debug(JSON.stringify(res.data));
+          })
+          .catch((error) => {
+            this.log.error(error);
+            error.response && this.log.error(JSON.stringify(error.response.data));
+          });
         const auth = await this.requestClient({
           method: 'get',
           maxBodyLength: Infinity,
@@ -270,7 +388,11 @@ class Nutriu extends utils.Adapter {
           headers: {
             accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
             'sec-fetch-site': 'same-origin',
-            cookie: 'glt_4_JGZWlP8eQHpEqkvQElolbA=' + this.cdcsession.login_token,
+            cookie:
+              'glt_4_JGZWlP8eQHpEqkvQElolbA=' +
+              this.cdcsession.sessionInfo.login_token +
+              ';gmid=gmid.ver4.AtLt4vuD2A.2v1uNAnlxTyjUtsN8UWiFgkri68y4UU5ZII52-mAQdqNYNDBbrgYcBhkinLfQMpc.aLgA8GZEYT_KSggB6YlYrpdq4kZU5D33jHhd-SysjaDGed_7c4uEW3HOJLPJo_CS9ApzFtQRz3_YTDIraIJosA.sc3; gig_bootstrap_4_JGZWlP8eQHpEqkvQElolbA=cdc_ver4;hasGmid=ver4;ucid=XWTJJFteIdHoKhEWg1SEnw',
+
             'sec-fetch-dest': 'document',
             'accept-language': 'de-DE,de;q=0.9',
             'sec-fetch-mode': 'navigate',
@@ -297,22 +419,25 @@ class Nutriu extends utils.Adapter {
           this.log.error('No auth object received');
           return;
         }
-        await this.requestClient({
+        const codeResponse = await this.requestClient({
           method: 'get',
           maxBodyLength: Infinity,
           url: 'https://cdc.accounts.home.id/oidc/op/v1.0/4_JGZWlP8eQHpEqkvQElolbA/authorize/continue',
           params: {
             context: this.context,
-            login_token: this.cdcsession.login_token,
-            consent:
-              '{"scope":"openid profile email DI.Account.read DI.AccountProfile.read DI.AccountProfile.write DI.AccountGeneralConsent.read DI.AccountGeneralConsent.write DI.AccountSubscription.read DI.AccountSubscription.write DI.GeneralConsent.read subscriptions consents profile_extended","clientID":"-u6aTznrxp9_9e_0a57CpvEG","context":"eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiIsImtpZCI6Ik9UY3hSRGxGTmtRMU56TkZOa1F5T1RGR1JEWXpNelU1UWpJNE5UVXlNRUZETURGQk9FTkNPQSJ9.eyJpc3MiOiJodHRwczovL2NkYy5hY2NvdW50cy5ob21lLmlkL29pZGMvb3AvdjEuMC80X0pHWldsUDhlUUhwRXFrdlFFbG9sYkEvIiwiY3R4X2RjIjoiZXUxIiwiaWF0IjoxNzA2ODgwNzU2LCJleHAiOjE3MDY4ODEzNTYsImNsaWVudF9pZCI6Ii11NmFUem5yeHA5XzllXzBhNTdDcHZFRyIsImN0eF9pZCI6ImY5MmQwODFkZGRkNzQ2MDhiMjk5ODI1ZjYzMTgzNzIxIiwicmVkaXJlY3RfdXJsIjoiY29tLnBoaWxpcHMua2Eub25la2EuYXBwLnByb2Q6Ly9vYXV0aHJlZGlyZWN0In0.m5rI_TiWOffwtX_eRRgPHdE-PerozWYyg1BmkQawcP0iwJ0QCarwYzlJGxpcq2VN-9K76w5IOS8XGNXpY_CSh7qpabcwAXu8QGg2TOcEUOpYiVdtc_cpqO9GwHgmsQ_SS0rHIeGE5RoITwwWdM7kSbGd3jZbWQdgE4Fpm10sZC8qFvcMKC8cx__mKX_P2CIKlS_Z8PJX_PvimaF2sYweVWsPqFwAAv43Yt_hNFVo78KT1ojl8I-A1hj74UV-k-IB8KrY6Fj9NCQU4QkBDww-GXofV30TYifVF5ANQ31XictULyFoD-rc92c3EHYd73R-Lw_qPG8sbBdsZaWy19jJ9g","UID":"03f8e6c339d0494e9d2f667e6288a2be","consent":true}',
+            login_token: this.cdcsession.sessionInfo.login_token,
+            consent: auth.consent,
             sig: auth.sig,
             userKey: auth.userKey,
           },
           headers: {
             accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
             'sec-fetch-site': 'same-site',
-            cookie: 'glt_4_JGZWlP8eQHpEqkvQElolbA=' + this.cdcsession.login_token,
+            cookie:
+              'glt_4_JGZWlP8eQHpEqkvQElolbA=' +
+              this.cdcsession.sessionInfo.login_token +
+              '; gmid=gmid.ver4.AtLt4vuD2A.2v1uNAnlxTyjUtsN8UWiFgkri68y4UU5ZII52-mAQdqNYNDBbrgYcBhkinLfQMpc.aLgA8GZEYT_KSggB6YlYrpdq4kZU5D33jHhd-SysjaDGed_7c4uEW3HOJLPJo_CS9ApzFtQRz3_YTDIraIJosA.sc3; gig_bootstrap_4_JGZWlP8eQHpEqkvQElolbA=cdc_ver4; hasGmid=ver4; ucid=XWTJJFteIdHoKhEWg1SEnw',
+
             'sec-fetch-dest': 'document',
             'accept-language': 'de-DE,de;q=0.9',
             'sec-fetch-mode': 'navigate',
@@ -323,7 +448,9 @@ class Nutriu extends utils.Adapter {
         })
           .then(async (res) => {
             this.log.error("Couldn't get session");
-            res.data && this.log.error(JSON.stringify(res.data));
+            const location = res.request.res.responseUrl;
+            this.log.error(JSON.stringify(qs.parse(location.split('?')[1])));
+            // res.data && this.log.error(JSON.stringify(res.data));
           })
           .catch((error) => {
             if (error && error.message.includes('Unsupported protocol')) {
@@ -344,7 +471,7 @@ class Nutriu extends utils.Adapter {
           },
           data: {
             client_id: '-u6aTznrxp9_9e_0a57CpvEG',
-            code: auth.code,
+            code: codeResponse.code,
             code_verifier: 'hEEeOVX1XVL9YGPZXkm7XZroUyE00mT3B4DvBzt_Yk4',
             grant_type: 'authorization_code',
             redirect_uri: 'com.philips.ka.oneka.app.prod://oauthredirect',
