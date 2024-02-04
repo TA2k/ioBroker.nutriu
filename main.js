@@ -656,46 +656,51 @@ class Nutriu extends utils.Adapter {
       });
   }
   async connectMqtt() {
-    if (this.device) {
-      this.device.end();
+    if (this.mqttClient) {
+      this.mqttClient.end();
     }
     await this.sasExchange();
 
-    this.device = awsIot.device({
-      debug: false,
-      protocol: "wss-custom-auth",
-      host: "iotgw.eu01.iot.hsdp.io/mqtt",
+    this.mqttClient = mqtt.connect('https://iotgw.eu01.iot.hsdp.io/mqtt', {
       clientId: this.sas.sub,
-      customAuthHeaders: {
-        "X-Amz-CustomAuthorizer-Signature": this.sasSession.signedToken,
-        AuthorizationToken: this.sasSession.accessToken,
-
+      wsOptions: {
+        headers: {
+          AuthorizationToken: this.sasSession.accessToken,
+          'x-amz-customauthorizer-signature': this.sasSession.signedToken,
+        },
       },
     });
-    this.device.on("connect", () => {
-      this.log.info("mqtt connected");
-      this.device.subscribe('prod/crl/things/' + this.sas.sub + '/cmd/receive/notified');
-      this.device.subscribe('prod/crl/things/' + this.sas.sub + '/cmd/receive/accepted');
-      this.device.subscribe('prod/crl/things/' + this.sas.sub + '/cmd/receive/rejected');
+    this.mqttClient.on('connect', () => {
+      this.log.info('MQTT connected');
+      this.mqttClient.subscribe('prod/crl/things/' + this.sas.sub + '/cmd/receive/notified');
+      this.mqttClient.subscribe('prod/crl/things/' + this.sas.sub + '/cmd/receive/accepted');
+      this.mqttClient.subscribe('prod/crl/things/' + this.sas.sub + '/cmd/receive/rejected');
     });
-
-    this.device.on("message", (topic, payload) => {
-      this.log.debug(`message ${topic} ${payload.toString()}`);
-
-    this.device.on('error', (error) => {
+    this.mqttClient.on('message', (topic, message) => {
+      this.log.debug('MQTT message: ' + topic + ' ' + message.toString());
+      if (topic.includes('notified')) {
+        this.json2iob.parse('mqtt.' + this.sas.sub + '.notified', JSON.parse(message.toString()));
+      }
+      if (topic.includes('accepted')) {
+        this.json2iob.parse('mqtt.' + this.sas.sub + '.accepted', JSON.parse(message.toString()));
+      }
+      if (topic.includes('rejected')) {
+        this.json2iob.parse('mqtt.' + this.sas.sub + '.rejected', JSON.parse(message.toString()));
+      }
+    });
+    this.mqttClient.on('error', (error) => {
       this.log.error('MQTT error: ' + error);
     });
-    this.device.on('reconnect', () => {
+    this.mqttClient.on('reconnect', () => {
       this.log.info('MQTT reconnect');
     });
-    this.device.on('close', () => {
+    this.mqttClient.on('close', () => {
       this.log.info('MQTT close');
     });
-    this.device.on('offline', () => {
+    this.mqttClient.on('offline', () => {
       this.log.info('MQTT offline');
     });
   }
-}
 
   async refreshToken() {
     await this.requestClient({
