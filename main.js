@@ -10,6 +10,7 @@ const utils = require('@iobroker/adapter-core');
 const axios = require('axios').default;
 const Json2iob = require('json2iob');
 const qs = require('qs');
+const mqtt = require('mqtt');
 
 class Nutriu extends utils.Adapter {
   /**
@@ -89,6 +90,7 @@ class Nutriu extends utils.Adapter {
     }
     await this.getDeviceList();
     await this.getDeviceDetails();
+    await this.connectMqtt();
     this.updateInterval = setInterval(
       () => {
         this.getDeviceDetails();
@@ -599,6 +601,100 @@ class Nutriu extends utils.Adapter {
         error.response && this.log.error(JSON.stringify(error.response.data));
       });
   }
+  async sasExchange() {
+    await this.requestClient({
+      method: 'post',
+      maxBodyLength: Infinity,
+      url: 'https://www.backend.vbs.versuni.com/api/sas/Token$exchange',
+      headers: {
+        accept: 'application/vnd.oneka.v2.0+json',
+        'content-type': 'application/vnd.oneka.v2.0+json',
+        'user-agent': 'NutriU/1 CFNetwork/1410.0.3 Darwin/22.6.0',
+        'accept-language': 'de-DE,de;q=0.9',
+        authorization: 'Bearer ' + this.session.token,
+      },
+      data: {
+        exchangeFor: 'HSDP',
+        idToken: this.homeSession.id_token,
+      },
+    })
+      .then(async (res) => {
+        this.log.debug(JSON.stringify(res.data));
+        this.sasSession = res.data;
+      })
+      .catch(async (error) => {
+        this.log.debug("SAS Exchange token didn't work");
+        this.log.error(error);
+        error.response && this.log.error(JSON.stringify(error.response.data));
+      });
+
+    await this.requestClient({
+      method: 'post',
+      maxBodyLength: Infinity,
+      url: 'https://iam-service.eu-west.philips-healthsuite.com/authorize/oauth2/introspect',
+      headers: {
+        Host: 'iam-service.eu-west.philips-healthsuite.com',
+        'Content-Type': 'application/x-www-form-urlencoded; charset=utf-8',
+        'User-Agent': 'NutriU/1 CFNetwork/1410.0.3 Darwin/22.6.0',
+        'api-version': '3',
+        Connection: 'keep-alive',
+        Accept: '*/*',
+        'Accept-Language': 'de-DE,de;q=0.9',
+        Authorization: 'Basic MjFlNDMxMTMxY2IwNGEwZWI1NjpAQDNmMi42bG8yMV8yRjYx',
+      },
+      data: { token: this.sasSession.accessToken },
+    })
+      .then(async (res) => {
+        this.log.debug(JSON.stringify(res.data));
+        this.sas = res.data;
+      })
+      .catch(async (error) => {
+        this.log.debug("SAS token didn't work");
+        this.log.error(error);
+        error.response && this.log.error(JSON.stringify(error.response.data));
+      });
+  }
+  async connectMqtt() {
+    if (this.mqttClient) {
+      this.mqttClient.end();
+    }
+    await this.sasExchange();
+
+    this.mqttClient = mqtt.connect('mqtt://iotgw.eu01.iot.hsdp.io/mqtt', {
+      clientId: this.sas.sub,
+      wsOptions: {
+        headers: {
+          AuthorizationToken: this.sasSession.accessToken,
+          'x-amz-customauthorizer-signature': this.sasSession.signedToken,
+        },
+      },
+    });
+    this.mqttClient.on('connect', () => {
+      this.log.info('MQTT connected');
+      this.mqttClient.subscribe('prod/crl/things/' + this.sas.sub + '/cmd/receive/notified');
+      this.mqttClient.subscribe('prod/crl/things/' + this.sas.sub + '/cmd/receive/accepted');
+      this.mqttClient.subscribe('prod/crl/things/' + this.sas.sub + '/cmd/receive/rejected');
+    });
+    this.mqttClient.on('message', (topic, message) => {
+      this.log.debug('MQTT message: ' + topic + ' ' + message.toString());
+      if (topic.includes('notified')) {
+        this.json2iob.parse('mqtt.' + this.sas.sub + '.notified', JSON.parse(message.toString()));
+      }
+      if (topic.includes('accepted')) {
+        this.json2iob.parse('mqtt.' + this.sas.sub + '.accepted', JSON.parse(message.toString()));
+      }
+      if (topic.includes('rejected')) {
+        this.json2iob.parse('mqtt.' + this.sas.sub + '.rejected', JSON.parse(message.toString()));
+      }
+    });
+    this.mqttClient.on('error', (error) => {
+      this.log.error('MQTT error: ' + error);
+    });
+    this.mqttClient.on('reconnect', () => {
+      this.log.info('MQTT reconnect');
+    });
+  }
+
   async refreshToken() {
     await this.requestClient({
       method: 'post',
