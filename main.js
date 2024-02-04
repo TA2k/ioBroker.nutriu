@@ -11,6 +11,7 @@ const axios = require('axios').default;
 const Json2iob = require('json2iob');
 const qs = require('qs');
 const mqtt = require('mqtt');
+const awsIot = require('aws-iot-device-sdk');
 
 class Nutriu extends utils.Adapter {
   /**
@@ -93,7 +94,7 @@ class Nutriu extends utils.Adapter {
     await this.connectMqtt();
     this.updateInterval = setInterval(
       () => {
-        this.getDeviceDetails();
+        // this.getDeviceDetails();
       },
       this.config.interval * 60 * 1000,
     );
@@ -611,7 +612,7 @@ class Nutriu extends utils.Adapter {
         'content-type': 'application/vnd.oneka.v2.0+json',
         'user-agent': 'NutriU/1 CFNetwork/1410.0.3 Darwin/22.6.0',
         'accept-language': 'de-DE,de;q=0.9',
-        authorization: 'Bearer ' + this.session.token,
+        authorization: 'Bearer ' + this.homeSession.access_token,
       },
       data: {
         exchangeFor: 'HSDP',
@@ -655,45 +656,46 @@ class Nutriu extends utils.Adapter {
       });
   }
   async connectMqtt() {
-    if (this.mqttClient) {
-      this.mqttClient.end();
+    if (this.device) {
+      this.device.end();
     }
     await this.sasExchange();
 
-    this.mqttClient = mqtt.connect('mqtt://iotgw.eu01.iot.hsdp.io/mqtt', {
+    this.device = awsIot.device({
+      debug: false,
+      protocol: "wss-custom-auth",
+      host: "iotgw.eu01.iot.hsdp.io/mqtt",
       clientId: this.sas.sub,
-      wsOptions: {
-        headers: {
-          AuthorizationToken: this.sasSession.accessToken,
-          'x-amz-customauthorizer-signature': this.sasSession.signedToken,
-        },
+      customAuthHeaders: {
+        "X-Amz-CustomAuthorizer-Signature": this.sasSession.signedToken,
+        AuthorizationToken: this.sasSession.accessToken,
+
       },
     });
-    this.mqttClient.on('connect', () => {
-      this.log.info('MQTT connected');
-      this.mqttClient.subscribe('prod/crl/things/' + this.sas.sub + '/cmd/receive/notified');
-      this.mqttClient.subscribe('prod/crl/things/' + this.sas.sub + '/cmd/receive/accepted');
-      this.mqttClient.subscribe('prod/crl/things/' + this.sas.sub + '/cmd/receive/rejected');
+    this.device.on("connect", () => {
+      this.log.info("mqtt connected");
+      this.device.subscribe('prod/crl/things/' + this.sas.sub + '/cmd/receive/notified');
+      this.device.subscribe('prod/crl/things/' + this.sas.sub + '/cmd/receive/accepted');
+      this.device.subscribe('prod/crl/things/' + this.sas.sub + '/cmd/receive/rejected');
     });
-    this.mqttClient.on('message', (topic, message) => {
-      this.log.debug('MQTT message: ' + topic + ' ' + message.toString());
-      if (topic.includes('notified')) {
-        this.json2iob.parse('mqtt.' + this.sas.sub + '.notified', JSON.parse(message.toString()));
-      }
-      if (topic.includes('accepted')) {
-        this.json2iob.parse('mqtt.' + this.sas.sub + '.accepted', JSON.parse(message.toString()));
-      }
-      if (topic.includes('rejected')) {
-        this.json2iob.parse('mqtt.' + this.sas.sub + '.rejected', JSON.parse(message.toString()));
-      }
-    });
-    this.mqttClient.on('error', (error) => {
+
+    this.device.on("message", (topic, payload) => {
+      this.log.debug(`message ${topic} ${payload.toString()}`);
+
+    this.device.on('error', (error) => {
       this.log.error('MQTT error: ' + error);
     });
-    this.mqttClient.on('reconnect', () => {
+    this.device.on('reconnect', () => {
       this.log.info('MQTT reconnect');
     });
+    this.device.on('close', () => {
+      this.log.info('MQTT close');
+    });
+    this.device.on('offline', () => {
+      this.log.info('MQTT offline');
+    });
   }
+}
 
   async refreshToken() {
     await this.requestClient({
