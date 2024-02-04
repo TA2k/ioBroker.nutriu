@@ -88,14 +88,20 @@ class Nutriu extends utils.Adapter {
       return;
     }
     await this.getDeviceList();
-    await this.updateDevices();
-    this.updateInterval = setInterval(() => {
-      this.updateDevices();
-    }, this.config.interval * 1000);
-    this.refreshInterval = setInterval(async () => {
-      await this.refreshToken();
-      await this.getConsumerLogin();
-    }, 59 * 60 * 1000);
+    await this.getDeviceDetails();
+    this.updateInterval = setInterval(
+      () => {
+        this.getDeviceDetails();
+      },
+      this.config.interval * 60 * 1000,
+    );
+    this.refreshInterval = setInterval(
+      async () => {
+        await this.refreshToken();
+        await this.getConsumerLogin();
+      },
+      59 * 60 * 1000,
+    );
   }
   async login() {
     if (!this.config.password) {
@@ -222,7 +228,10 @@ class Nutriu extends utils.Adapter {
             'Mozilla/5.0 (iPhone; CPU iPhone OS 16_7_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1',
           referer: 'https://www.accounts.home.id/',
           'sec-fetch-dest': 'empty',
-          cookie: 'gmid=' + this.gmid + ';gig_bootstrap_4_JGZWlP8eQHpEqkvQElolbA=cdc_ver4;hasGmid=ver4;ucid=XWTJJFteIdHoKhEWg1SEnw',
+          cookie:
+            'gmid=' +
+            this.gmid +
+            ';gig_bootstrap_4_JGZWlP8eQHpEqkvQElolbA=cdc_ver4;hasGmid=ver4;ucid=XWTJJFteIdHoKhEWg1SEnw',
         },
         data: {
           email: this.config.username,
@@ -230,7 +239,8 @@ class Nutriu extends utils.Adapter {
           APIKey: '4_JGZWlP8eQHpEqkvQElolbA',
           sdk: 'js_latest',
           authMode: 'cookie',
-          pageURL: 'https://www.accounts.home.id/authui/client/login?gig_ui_locales=de-DE&gig_client_id=-u6aTznrxp9_9e_0a57CpvEG&country=de',
+          pageURL:
+            'https://www.accounts.home.id/authui/client/login?gig_ui_locales=de-DE&gig_client_id=-u6aTznrxp9_9e_0a57CpvEG&country=de',
           sdkBuild: '15703',
           format: 'json',
         },
@@ -278,7 +288,10 @@ class Nutriu extends utils.Adapter {
             'Mozilla/5.0 (iPhone; CPU iPhone OS 16_7_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1',
           referer: 'https://www.accounts.home.id/',
           'sec-fetch-dest': 'empty',
-          cookie: 'gmid=' + this.gmid + ';gig_bootstrap_4_JGZWlP8eQHpEqkvQElolbA=cdc_ver4;hasGmid=ver4;ucid=XWTJJFteIdHoKhEWg1SEnw',
+          cookie:
+            'gmid=' +
+            this.gmid +
+            ';gig_bootstrap_4_JGZWlP8eQHpEqkvQElolbA=cdc_ver4;hasGmid=ver4;ucid=XWTJJFteIdHoKhEWg1SEnw',
         },
         data: {
           vToken: this.vtoken,
@@ -290,7 +303,8 @@ class Nutriu extends utils.Adapter {
           APIKey: '4_JGZWlP8eQHpEqkvQElolbA',
           sdk: 'js_latest',
           authMode: 'cookie',
-          pageURL: 'https://www.accounts.home.id/authui/client/login?gig_ui_locales=de-DE&gig_client_id=-u6aTznrxp9_9e_0a57CpvEG&country=de',
+          pageURL:
+            'https://www.accounts.home.id/authui/client/login?gig_ui_locales=de-DE&gig_client_id=-u6aTznrxp9_9e_0a57CpvEG&country=de',
           sdkBuild: '15703',
           format: 'json',
         },
@@ -336,7 +350,8 @@ class Nutriu extends utils.Adapter {
             origin: 'https://www.accounts.home.id',
             'user-agent':
               'Mozilla/5.0 (iPhone; CPU iPhone OS 16_7_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1',
-            referer: 'https://www.accounts.home.id/authui/client/login?client_id=-u6aTznrxp9_9e_0a57CpvEG&ui_locales=de-DE',
+            referer:
+              'https://www.accounts.home.id/authui/client/login?client_id=-u6aTznrxp9_9e_0a57CpvEG&ui_locales=de-DE',
             'x-newrelic-id': 'undefined',
             cookie: 'glt_4_JGZWlP8eQHpEqkvQElolbA=' + this.cdcsession.sessionInfo.login_token,
           },
@@ -378,7 +393,8 @@ class Nutriu extends utils.Adapter {
             sdk: 'js_latest',
             login_token: this.cdcsession.sessionInfo.login_token,
             authMode: 'cookie',
-            pageURL: 'https://www.accounts.home.id/authui/client/login?gig_ui_locales=de-DE&gig_client_id=-u6aTznrxp9_9e_0a57CpvEG&country=de',
+            pageURL:
+              'https://www.accounts.home.id/authui/client/login?gig_ui_locales=de-DE&gig_client_id=-u6aTznrxp9_9e_0a57CpvEG&country=de',
             sdkBuild: '15703',
             format: 'json',
           },
@@ -627,7 +643,9 @@ class Nutriu extends utils.Adapter {
     await this.requestClient({
       method: 'get',
       maxBodyLength: Infinity,
-      url: 'https://www.backend.vbs.versuni.com/api/0921897c-a457-443b-b555-5bbc7cd62985/Profile/self/Appliance?page=1&size=10&ts=' + Date.now(),
+      url:
+        'https://www.backend.vbs.versuni.com/api/0921897c-a457-443b-b555-5bbc7cd62985/Profile/self/Appliance?page=1&size=10&ts=' +
+        Date.now(),
       headers: {
         accept: 'application/vnd.oneka.v2.0+json',
         authorization: 'Bearer ' + this.session.token,
@@ -670,12 +688,13 @@ class Nutriu extends utils.Adapter {
       });
   }
 
-  async updateDevices() {
+  async getDeviceDetails() {
     for (const device of this.deviceArray) {
       if (device._links.device) {
+        const url = device._links.device.href.replace('{?country,unitSystem}', '?country=DE&unitSystem=METRIC');
         await this.requestClient({
           method: 'get',
-          url: device._links.device.href,
+          url: url,
           headers: {
             accept: 'application/vnd.oneka.v2.0+json',
             authorization: 'Bearer ' + this.session.token,
@@ -686,7 +705,7 @@ class Nutriu extends utils.Adapter {
         })
           .then(async (res) => {
             this.log.debug(JSON.stringify(res.data));
-            this.json2iob.parse(device.externalDeviceId + '.status', res.data, { channelName: 'status of device' });
+            this.json2iob.parse(device.externalDeviceId + '.details', res.data, { channelName: 'details of device' });
           })
           .catch((error) => {
             this.log.warn(error);
@@ -726,7 +745,7 @@ class Nutriu extends utils.Adapter {
         }
 
         if (command === 'refresh') {
-          this.updateDevices();
+          this.getDeviceDetails();
           return;
         }
         if (state.val === false && command === 'lock') {
@@ -769,7 +788,7 @@ class Nutriu extends utils.Adapter {
       }
       this.refreshTimeout && clearTimeout(this.refreshTimeout);
       this.refreshTimeout = setTimeout(() => {
-        this.updateDevices();
+        this.getDeviceDetails();
       }, 10 * 1000);
     }
   }
