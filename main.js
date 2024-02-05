@@ -25,7 +25,7 @@ class Nutriu extends utils.Adapter {
     this.on('ready', this.onReady.bind(this));
     this.on('stateChange', this.onStateChange.bind(this));
     this.on('unload', this.onUnload.bind(this));
-    this.mqttcArray = [];
+    this.deviceArray = [];
     this.json2iob = new Json2iob(this);
     this.requestClient = axios.create({
       withCredentials: true,
