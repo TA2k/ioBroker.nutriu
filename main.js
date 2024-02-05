@@ -691,7 +691,7 @@ class Nutriu extends utils.Adapter {
         });
       this.mqttc.subscribe('prod/crl/things/' + this.sas.sub + '/cmd/receive/accepted', mqtt.QoS.AtLeastOnce);
       this.mqttc.subscribe('prod/crl/things/' + this.sas.sub + '/cmd/receive/rejected', mqtt.QoS.AtLeastOnce);
-      for (const device of this.mqttcArray) {
+      for (const device of this.deviceArray) {
         this.mqttc.publish(
           'prod/crl/things/' + device.externalDeviceId + '/cmd',
           JSON.stringify({
