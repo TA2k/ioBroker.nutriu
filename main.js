@@ -593,7 +593,7 @@ class Nutriu extends utils.Adapter {
         this.log.debug(JSON.stringify(res.data));
         if (res.data && res.data.data && res.data.data.attributes) {
           this.session = res.data.data.attributes;
-          this.log.info('Login successful');
+          this.log.debug('consumer Login successful');
           await this.setStateAsync('info.connection', true, true);
         }
       })
@@ -656,6 +656,7 @@ class Nutriu extends utils.Adapter {
       });
   }
   async connectMqtt() {
+    this.log.debug('Connect MQTT');
     if (this.mqttc) {
       await this.mqttc.disconnect();
     }
@@ -681,7 +682,8 @@ class Nutriu extends utils.Adapter {
     this.mqttc = client.new_connection(config);
 
     this.mqttc.on('connect', () => {
-      this.log.info('mqtt connected');
+      if (!this.mqttc) return;
+      this.log.debug('mqtt connected');
       this.mqttc
         .subscribe('prod/crl/things/' + this.sas.sub + '/cmd/receive/notified', mqtt.QoS.AtLeastOnce)
         .catch((error) => {
@@ -817,6 +819,7 @@ class Nutriu extends utils.Adapter {
         this.log.debug(JSON.stringify(res.data));
         this.homeSession = res.data;
         await this.setStateAsync('auth.homesession', { val: JSON.stringify(res.data), ack: true });
+        await this.getConsumerLogin();
         this.connectMqtt();
       })
       .catch(async (error) => {
