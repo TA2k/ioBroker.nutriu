@@ -10,8 +10,8 @@ const utils = require('@iobroker/adapter-core');
 const axios = require('axios').default;
 const Json2iob = require('json2iob');
 const qs = require('qs');
-const mqtt = require('mqtt');
-const awsIot = require('aws-iot-device-sdk');
+const { mqtt, iot } = require('aws-iot-device-sdk-v2');
+const uuidv4 = require('uuid').v4;
 
 class Nutriu extends utils.Adapter {
   /**
@@ -656,49 +656,124 @@ class Nutriu extends utils.Adapter {
       });
   }
   async connectMqtt() {
-    if (this.mqttClient) {
-      this.mqttClient.end();
+    if (this.mqttc) {
+      await this.mqttc.disconnect();
     }
     await this.sasExchange();
 
-    this.mqttClient = mqtt.connect('https://iotgw.eu01.iot.hsdp.io/mqtt', {
-      clientId: this.sas.sub,
-      wsOptions: {
-        headers: {
-          AuthorizationToken: this.sasSession.accessToken,
-          'x-amz-customauthorizer-signature': this.sasSession.signedToken,
-        },
-      },
-    });
-    this.mqttClient.on('connect', () => {
-      this.log.info('MQTT connected');
-      this.mqttClient.subscribe('prod/crl/things/' + this.sas.sub + '/cmd/receive/notified');
-      this.mqttClient.subscribe('prod/crl/things/' + this.sas.sub + '/cmd/receive/accepted');
-      this.mqttClient.subscribe('prod/crl/things/' + this.sas.sub + '/cmd/receive/rejected');
-    });
-    this.mqttClient.on('message', (topic, message) => {
-      this.log.debug('MQTT message: ' + topic + ' ' + message.toString());
-      if (topic.includes('notified')) {
-        this.json2iob.parse('mqtt.' + this.sas.sub + '.notified', JSON.parse(message.toString()));
+    const config_builder = iot.AwsIotMqttConnectionConfigBuilder.new_default_builder();
+    config_builder.with_clean_session(false);
+    config_builder.with_client_id(this.sas.sub);
+    config_builder.with_endpoint('iotgw.eu01.iot.hsdp.io');
+    //config_builder.with_reconnect_max_sec(1000);
+    //config_builder.with_reconnect_min_sec(10000);
+    //config_builder.with_keep_alive_seconds(30);
+    config_builder.with_custom_authorizer(
+      '',
+      '',
+      this.sasSession.signedToken,
+      '',
+      'AuthorizationToken',
+      this.sasSession.accessToken,
+    );
+    const config = config_builder.build();
+    const client = new mqtt.MqttClient();
+    this.mqttc = client.new_connection(config);
+
+    this.mqttc.on('connect', () => {
+      this.log.info('mqtt connected');
+      if (!this.mqttc) {
+        return;
       }
-      if (topic.includes('accepted')) {
-        this.json2iob.parse('mqtt.' + this.sas.sub + '.accepted', JSON.parse(message.toString()));
-      }
-      if (topic.includes('rejected')) {
-        this.json2iob.parse('mqtt.' + this.sas.sub + '.rejected', JSON.parse(message.toString()));
+      this.mqttc
+        .subscribe('prod/crl/things/' + this.sas.sub + '/cmd/receive/notified', mqtt.QoS.AtLeastOnce)
+        .catch((error) => {
+          this.log.error('MQTT subscribe error: ' + error);
+        });
+      this.mqttc
+        .subscribe('prod/crl/things/' + this.sas.sub + '/cmd/receive/accepted', mqtt.QoS.AtLeastOnce)
+        .catch((error) => {
+          this.log.error('MQTT subscribe error: ' + error);
+        });
+      this.mqttc
+        .subscribe('prod/crl/things/' + this.sas.sub + '/cmd/receive/rejected', mqtt.QoS.AtLeastOnce)
+        .catch((error) => {
+          this.log.error('MQTT subscribe error: ' + error);
+        });
+      for (const device of this.deviceArray) {
+        this.mqttc.publish(
+          'prod/crl/things/' + device.externalDeviceId + '/cmd',
+          JSON.stringify({
+            cmdName: uuidv4(),
+            cmdDetail: { op: 'Subscribe', ttl: 300, condorVersion: '1', path: '0/firmware' },
+            updateNotifyRequired: true,
+            timeToLive: 30,
+          }),
+          mqtt.QoS.AtLeastOnce,
+        );
+        this.mqttc.publish(
+          'prod/crl/things/' + device.externalDeviceId + '/cmd',
+          JSON.stringify({
+            cmdName: uuidv4(),
+            cmdDetail: { op: 'Subscribe', condorVersion: '1', path: '1/airfryer', ttl: 300 },
+            updateNotifyRequired: true,
+            timeToLive: 30,
+          }),
+          mqtt.QoS.AtLeastOnce,
+        );
+        this.mqttc.publish(
+          'prod/crl/things/' + device.externalDeviceId + '/cmd',
+          JSON.stringify({
+            cmdName: uuidv4(),
+            cmdDetail: { op: 'Subscribe', condorVersion: '1', path: '1/machinestatus', ttl: 300 },
+            updateNotifyRequired: true,
+            timeToLive: 30,
+          }),
+          mqtt.QoS.AtLeastOnce,
+        );
+        this.mqttc.publish(
+          'prod/crl/things/' + device.externalDeviceId + '/cmd',
+          JSON.stringify({
+            cmdName: uuidv4(),
+            cmdDetail: { op: 'Subscribe', condorVersion: '1', path: '1/hermesac', ttl: 300 },
+            updateNotifyRequired: true,
+            timeToLive: 30,
+          }),
+          mqtt.QoS.AtLeastOnce,
+        );
+        this.mqttc.publish(
+          'prod/crl/things/' + device.externalDeviceId + '/cmd',
+          JSON.stringify({
+            cmdName: uuidv4(),
+            cmdDetail: { op: 'Subscribe', condorVersion: '1', path: '1/nutrimax', ttl: 300 },
+            updateNotifyRequired: true,
+            timeToLive: 30,
+          }),
+          mqtt.QoS.AtLeastOnce,
+        );
       }
     });
-    this.mqttClient.on('error', (error) => {
+
+    this.mqttc.on('message', (topic, payload) => {
+      if (!this.firstMessageReceived) {
+        this.firstMessageReceived = true;
+        this.log.info('First MQTT message received');
+      }
+      const json = Buffer.from(payload);
+      const data = JSON.parse(json.toString('utf-8'));
+      this.log.debug(`Mower MQTT: ${JSON.stringify(data)}`);
+      if (data.type !== 'accepted') {
+        this.log.info('MQTT message: ' + JSON.stringify(data));
+      }
+    });
+    this.mqttc.on('error', (error) => {
       this.log.error('MQTT error: ' + error);
     });
-    this.mqttClient.on('reconnect', () => {
+    this.mqttc.on('closed', () => {
       this.log.info('MQTT reconnect');
     });
-    this.mqttClient.on('close', () => {
-      this.log.info('MQTT close');
-    });
-    this.mqttClient.on('offline', () => {
-      this.log.info('MQTT offline');
+    await this.mqttc.connect().catch((error) => {
+      this.log.error('MQTT connect error: ' + error);
     });
   }
 
@@ -825,6 +900,7 @@ class Nutriu extends utils.Adapter {
   async onUnload(callback) {
     try {
       this.setState('info.connection', false, true);
+      this.mqttc && this.mqttc.disconnect();
       this.refreshTimeout && clearTimeout(this.refreshTimeout);
       this.updateInterval && clearInterval(this.updateInterval);
       callback();
@@ -874,6 +950,10 @@ class Nutriu extends utils.Adapter {
             this.log.error(error);
             error.response && this.log.error(JSON.stringify(error.response.data));
           });
+        this.refreshTimeout && clearTimeout(this.refreshTimeout);
+        this.refreshTimeout = setTimeout(() => {
+          this.getDeviceDetails();
+        }, 10 * 1000);
       } else {
         if (id.split('.')[3] === 'state') {
           const deviceId = id.split('.')[2];
@@ -889,10 +969,6 @@ class Nutriu extends utils.Adapter {
           }
         }
       }
-      this.refreshTimeout && clearTimeout(this.refreshTimeout);
-      this.refreshTimeout = setTimeout(() => {
-        this.getDeviceDetails();
-      }, 10 * 1000);
     }
   }
 }
