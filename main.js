@@ -26,6 +26,7 @@ class Nutriu extends utils.Adapter {
     this.on('stateChange', this.onStateChange.bind(this));
     this.on('unload', this.onUnload.bind(this));
     this.deviceArray = [];
+    this.localDevices = {};
     this.json2iob = new Json2iob(this);
     this.requestClient = axios.create({
       withCredentials: true,
@@ -945,11 +946,11 @@ class Nutriu extends utils.Adapter {
   async getLocalAuth(device, challange) {
     const vvv =
       Buffer.from(challange, 'base64').toString('utf-8') +
-      Buffer.from(device.client_id, 'base64').toString('utf-8') +
-      Buffer.from(device.client_secret, 'base64').toString('utf-8');
+      Buffer.from(device.clientId, 'base64').toString('utf-8') +
+      Buffer.from(device.clientSecret, 'base64').toString('utf-8');
     const myhash = crypto.createHash('sha256').update(vvv).digest('hex');
     const myhashhex = Buffer.from(myhash, 'hex');
-    const res = Buffer.concat([Buffer.from(client_id, 'base64'), myhashhex]);
+    const res = Buffer.concat([Buffer.from(device.clientId, 'base64'), myhashhex]);
     const encoded = res.toString('base64');
     device.token = encoded;
   }
