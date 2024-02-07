@@ -12,7 +12,7 @@ const Json2iob = require('json2iob');
 const qs = require('qs');
 const { mqtt, iot } = require('aws-iot-device-sdk-v2');
 const uuidv4 = require('uuid').v4;
-
+const crypto = require('crypto');
 class Nutriu extends utils.Adapter {
   /**
    * @param {Partial<utils.AdapterOptions>} [options={}]
@@ -91,20 +91,16 @@ class Nutriu extends utils.Adapter {
     }
     await this.getDeviceList();
     await this.getDeviceDetails();
+    await this.updateLocalStatus();
     await this.connectMqtt();
-    this.updateInterval = setInterval(
-      () => {
-        // this.getDeviceDetails();
-      },
-      this.config.interval * 60 * 1000,
-    );
-    this.refreshInterval = setInterval(
-      async () => {
-        await this.refreshToken();
-        await this.getConsumerLogin();
-      },
-      59 * 60 * 1000,
-    );
+    this.updateInterval = setInterval(() => {
+      this.updateLocalStatus();
+    }, 5 * 1000);
+    this.refreshInterval = setInterval(async () => {
+      await this.refreshToken();
+      await this.getConsumerLogin();
+      this.connectMqtt();
+    }, 59 * 60 * 1000);
   }
   async login() {
     if (!this.config.password) {
@@ -231,10 +227,7 @@ class Nutriu extends utils.Adapter {
             'Mozilla/5.0 (iPhone; CPU iPhone OS 16_7_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1',
           referer: 'https://www.accounts.home.id/',
           'sec-fetch-dest': 'empty',
-          cookie:
-            'gmid=' +
-            this.gmid +
-            ';gig_bootstrap_4_JGZWlP8eQHpEqkvQElolbA=cdc_ver4;hasGmid=ver4;ucid=XWTJJFteIdHoKhEWg1SEnw',
+          cookie: 'gmid=' + this.gmid + ';gig_bootstrap_4_JGZWlP8eQHpEqkvQElolbA=cdc_ver4;hasGmid=ver4;ucid=XWTJJFteIdHoKhEWg1SEnw',
         },
         data: {
           email: this.config.username,
@@ -242,8 +235,7 @@ class Nutriu extends utils.Adapter {
           APIKey: '4_JGZWlP8eQHpEqkvQElolbA',
           sdk: 'js_latest',
           authMode: 'cookie',
-          pageURL:
-            'https://www.accounts.home.id/authui/client/login?gig_ui_locales=de-DE&gig_client_id=-u6aTznrxp9_9e_0a57CpvEG&country=de',
+          pageURL: 'https://www.accounts.home.id/authui/client/login?gig_ui_locales=de-DE&gig_client_id=-u6aTznrxp9_9e_0a57CpvEG&country=de',
           sdkBuild: '15703',
           format: 'json',
         },
@@ -291,10 +283,7 @@ class Nutriu extends utils.Adapter {
             'Mozilla/5.0 (iPhone; CPU iPhone OS 16_7_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1',
           referer: 'https://www.accounts.home.id/',
           'sec-fetch-dest': 'empty',
-          cookie:
-            'gmid=' +
-            this.gmid +
-            ';gig_bootstrap_4_JGZWlP8eQHpEqkvQElolbA=cdc_ver4;hasGmid=ver4;ucid=XWTJJFteIdHoKhEWg1SEnw',
+          cookie: 'gmid=' + this.gmid + ';gig_bootstrap_4_JGZWlP8eQHpEqkvQElolbA=cdc_ver4;hasGmid=ver4;ucid=XWTJJFteIdHoKhEWg1SEnw',
         },
         data: {
           vToken: this.vtoken,
@@ -306,8 +295,7 @@ class Nutriu extends utils.Adapter {
           APIKey: '4_JGZWlP8eQHpEqkvQElolbA',
           sdk: 'js_latest',
           authMode: 'cookie',
-          pageURL:
-            'https://www.accounts.home.id/authui/client/login?gig_ui_locales=de-DE&gig_client_id=-u6aTznrxp9_9e_0a57CpvEG&country=de',
+          pageURL: 'https://www.accounts.home.id/authui/client/login?gig_ui_locales=de-DE&gig_client_id=-u6aTznrxp9_9e_0a57CpvEG&country=de',
           sdkBuild: '15703',
           format: 'json',
         },
@@ -353,8 +341,7 @@ class Nutriu extends utils.Adapter {
             origin: 'https://www.accounts.home.id',
             'user-agent':
               'Mozilla/5.0 (iPhone; CPU iPhone OS 16_7_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1',
-            referer:
-              'https://www.accounts.home.id/authui/client/login?client_id=-u6aTznrxp9_9e_0a57CpvEG&ui_locales=de-DE',
+            referer: 'https://www.accounts.home.id/authui/client/login?client_id=-u6aTznrxp9_9e_0a57CpvEG&ui_locales=de-DE',
             'x-newrelic-id': 'undefined',
             cookie: 'glt_4_JGZWlP8eQHpEqkvQElolbA=' + this.cdcsession.sessionInfo.login_token,
           },
@@ -396,8 +383,7 @@ class Nutriu extends utils.Adapter {
             sdk: 'js_latest',
             login_token: this.cdcsession.sessionInfo.login_token,
             authMode: 'cookie',
-            pageURL:
-              'https://www.accounts.home.id/authui/client/login?gig_ui_locales=de-DE&gig_client_id=-u6aTznrxp9_9e_0a57CpvEG&country=de',
+            pageURL: 'https://www.accounts.home.id/authui/client/login?gig_ui_locales=de-DE&gig_client_id=-u6aTznrxp9_9e_0a57CpvEG&country=de',
             sdkBuild: '15703',
             format: 'json',
           },
@@ -658,7 +644,9 @@ class Nutriu extends utils.Adapter {
   async connectMqtt() {
     this.log.debug('Connect MQTT');
     if (this.mqttc) {
-      await this.mqttc.disconnect();
+      await this.mqttc.disconnect().catch((error) => {
+        this.log.debug('MQTT disconnect error: ' + error);
+      });
     }
     await this.sasExchange();
 
@@ -669,14 +657,7 @@ class Nutriu extends utils.Adapter {
     //config_builder.with_reconnect_max_sec(1000);
     //config_builder.with_reconnect_min_sec(10000);
     //config_builder.with_keep_alive_seconds(30);
-    config_builder.with_custom_authorizer(
-      null,
-      null,
-      this.sasSession.signedToken,
-      null,
-      'AuthorizationToken',
-      this.sasSession.accessToken,
-    );
+    config_builder.with_custom_authorizer('foo', null, this.sasSession.signedToken, null, 'AuthorizationToken', this.sasSession.accessToken);
     const config = config_builder.build();
     const client = new mqtt.MqttClient();
     this.mqttc = client.new_connection(config);
@@ -684,11 +665,9 @@ class Nutriu extends utils.Adapter {
     this.mqttc.on('connect', () => {
       if (!this.mqttc) return;
       this.log.debug('mqtt connected');
-      this.mqttc
-        .subscribe('prod/crl/things/' + this.sas.sub + '/cmd/receive/notified', mqtt.QoS.AtLeastOnce)
-        .catch((error) => {
-          this.log.error('MQTT subscribe error: ' + error);
-        });
+      this.mqttc.subscribe('prod/crl/things/' + this.sas.sub + '/cmd/receive/notified', mqtt.QoS.AtLeastOnce).catch((error) => {
+        this.log.error('MQTT subscribe error: ' + error);
+      });
       this.mqttc.subscribe('prod/crl/things/' + this.sas.sub + '/cmd/receive/accepted', mqtt.QoS.AtLeastOnce);
       this.mqttc.subscribe('prod/crl/things/' + this.sas.sub + '/cmd/receive/rejected', mqtt.QoS.AtLeastOnce);
       for (const device of this.deviceArray) {
@@ -700,7 +679,7 @@ class Nutriu extends utils.Adapter {
             updateNotifyRequired: true,
             timeToLive: 30,
           }),
-          mqtt.QoS.AtLeastOnce,
+          mqtt.QoS.AtLeastOnce
         );
         this.mqttc.publish(
           'prod/crl/things/' + device.externalDeviceId + '/cmd',
@@ -710,7 +689,7 @@ class Nutriu extends utils.Adapter {
             updateNotifyRequired: true,
             timeToLive: 30,
           }),
-          mqtt.QoS.AtLeastOnce,
+          mqtt.QoS.AtLeastOnce
         );
         this.mqttc.publish(
           'prod/crl/things/' + device.externalDeviceId + '/cmd',
@@ -720,7 +699,7 @@ class Nutriu extends utils.Adapter {
             updateNotifyRequired: true,
             timeToLive: 30,
           }),
-          mqtt.QoS.AtLeastOnce,
+          mqtt.QoS.AtLeastOnce
         );
         this.mqttc.publish(
           'prod/crl/things/' + device.externalDeviceId + '/cmd',
@@ -730,7 +709,7 @@ class Nutriu extends utils.Adapter {
             updateNotifyRequired: true,
             timeToLive: 30,
           }),
-          mqtt.QoS.AtLeastOnce,
+          mqtt.QoS.AtLeastOnce
         );
         // this.mqttc.publish(
         //   'prod/crl/things/' + device.externalDeviceId + '/cmd',
@@ -777,13 +756,9 @@ class Nutriu extends utils.Adapter {
         if (data.type !== 'accepted') {
           if (data.command && data.command.statusDetail) {
             const deviceId = data.topic.split('/')[3];
-            this.json2iob.parse(
-              deviceId + '.' + data.command.statusDetail.op.toLowerCase(),
-              data.command.statusDetail,
-              {
-                channelName: 'response from device',
-              },
-            );
+            this.json2iob.parse(deviceId + '.' + data.command.statusDetail.op.toLowerCase(), data.command.statusDetail, {
+              channelName: 'response from device',
+            });
           }
         }
       } catch (error) {
@@ -819,8 +794,6 @@ class Nutriu extends utils.Adapter {
         this.log.debug(JSON.stringify(res.data));
         this.homeSession = res.data;
         await this.setStateAsync('auth.homesession', { val: JSON.stringify(res.data), ack: true });
-        await this.getConsumerLogin();
-        this.connectMqtt();
       })
       .catch(async (error) => {
         this.log.debug("Refresh token didn't work");
@@ -844,9 +817,7 @@ class Nutriu extends utils.Adapter {
     await this.requestClient({
       method: 'get',
       maxBodyLength: Infinity,
-      url:
-        'https://www.backend.vbs.versuni.com/api/0921897c-a457-443b-b555-5bbc7cd62985/Profile/self/Appliance?page=1&size=10&ts=' +
-        Date.now(),
+      url: 'https://www.backend.vbs.versuni.com/api/0921897c-a457-443b-b555-5bbc7cd62985/Profile/self/Appliance?page=1&size=10&ts=' + Date.now(),
       headers: {
         accept: 'application/vnd.oneka.v2.0+json',
         authorization: 'Bearer ' + this.session.token,
@@ -907,6 +878,32 @@ class Nutriu extends utils.Adapter {
           .then(async (res) => {
             this.log.debug(JSON.stringify(res.data));
             this.json2iob.parse(device.externalDeviceId + '.details', res.data, { channelName: 'details of device' });
+            if (res.data._links && res.data._links.deviceNetworkConfigs) {
+              await this.requestClient({
+                method: 'get',
+                url: res.data._links.deviceNetworkConfigs.href,
+                headers: {
+                  accept: 'application/vnd.oneka.v2.0+json',
+                  authorization: 'Bearer ' + this.session.token,
+                  'x-user-agent': 'iOS 16.7.3;7.28.1',
+                  'user-agent': 'NutriU/7.28.1 (com.philips.cl.nutriu; build:1; iOS 16.7.3) Darwin/22.6.0 CFNetwork/1410.0.3',
+                  'accept-language': 'de-DE',
+                },
+              })
+                .then(async (res) => {
+                  this.log.debug(JSON.stringify(res.data));
+                  for (const network of res.data._embedded.item) {
+                    if (network.ipAddress) {
+                      device.ipAdress = network.ipAddress;
+                    }
+                  }
+                  this.json2iob.parse(device.externalDeviceId + '.network', res.data, { channelName: 'network information' });
+                })
+                .catch((error) => {
+                  this.log.error(error);
+                  error.response && this.log.error(JSON.stringify(error.response.data));
+                });
+            }
           })
           .catch((error) => {
             this.log.warn(error);
@@ -916,6 +913,47 @@ class Nutriu extends utils.Adapter {
     }
   }
 
+  async updateLocalStatus() {
+    for (const device of this.deviceArray) {
+      if (device.ipAddress) {
+        const headers = { 'User-Agent': 'cml', 'Content-Type': 'application/json' };
+        if (device.token) {
+          headers.authorization = 'PHILIPS-Condor ' + device.token;
+        }
+        await this.requestClient({
+          method: 'get',
+          url: 'http://' + device.ipAddress + '/di/v1/products/1/airfryer',
+          headers: headers,
+        })
+          .then(async (res) => {
+            this.log.debug(JSON.stringify(res.data));
+            this.json2iob.parse(device.externalDeviceId + '.status', res.data, { channelName: 'local status' });
+          })
+          .catch(async (error) => {
+            if (error.response && error.response.status === 401) {
+              this.log.debug('Token expired');
+              const challange = error.response.headers['www-authenticate'].replace('PHILIPS-Condor ', '');
+              await this.getLocalAuth(device, challange);
+              await this.updateLocalStatus();
+            }
+            this.log.warn(error);
+            error.response && this.log.warn(JSON.stringify(error.response.data));
+          });
+      }
+    }
+  }
+  async getLocalAuth(device, challange) {
+    const vvv =
+      Buffer.from(challange, 'base64').toString('utf-8') +
+      Buffer.from(device.client_id, 'base64').toString('utf-8') +
+      Buffer.from(device.client_secret, 'base64').toString('utf-8');
+    const myhash = crypto.createHash('sha256').update(vvv).digest('hex');
+    const myhashhex = Buffer.from(myhash, 'hex');
+    const res = Buffer.concat([Buffer.from(client_id, 'base64'), myhashhex]);
+    const encoded = res.toString('base64');
+    device.token = encoded;
+  }
+
   /**
    * Is called when adapter shuts down - callback has to be called under any circumstances!
    * @param {() => void} callback
@@ -923,7 +961,7 @@ class Nutriu extends utils.Adapter {
   async onUnload(callback) {
     try {
       this.setState('info.connection', false, true);
-      this.mqttc && this.mqttc.disconnect();
+      this.mqttc && this.mqttc.disconnect().catch((error) => this.log.debug('MQTT disconnect error: ' + error));
       this.refreshTimeout && clearTimeout(this.refreshTimeout);
       this.updateInterval && clearInterval(this.updateInterval);
       callback();
